@@ -25,6 +25,12 @@ void JGenerator::init()
     _charX = "public int getCharX(char ch, char nextChar, char prevChar) {""\n"
             "int charX=0;""\n"
             "switch(ch) {""\n";
+
+    _composeCharWidth =  "public int getComposedCharWidth(char ch, char nextChar, char prevChar) {""\n"
+            "int charWidth=0;""\n";
+
+    _composeCharX = "public int getComposedCharX(char ch, char nextChar, char prevChar) {""\n"
+            "int charX=0;""\n";
 }
 
 int JGenerator::getCharCases(ushort ch){
@@ -139,6 +145,70 @@ void JGenerator::addSimple(ushort ch, CharInfo *info)
                   .arg(info->x()));
 }
 
+
+void JGenerator::addComposed(ushort ch, CharInfo::Composed composed, QList<CharInfo *> info)
+{
+    CharInfo *endInfo=0;
+    CharInfo *singleInfo=0;
+    ushort nextC;
+
+    foreach(CharInfo* ci, info) {
+        if(ci->position == CharInfo::END)
+            endInfo = ci;
+        else if (ci->position == CharInfo::SINGLE)
+            singleInfo = ci;
+        else
+            qDebug("Not handled: %d", ci->position);
+    }
+
+    switch(composed) {
+    case CharInfo::LamAlef:
+        nextC = 0x0627;
+        break;
+    case CharInfo::LamAlefHamezaAbove:
+        nextC = 0x0623;
+        break;
+    case CharInfo::LamAlefHamezaBelow:
+        nextC = 0x0625;
+        break;
+    case CharInfo::LamAlefMada:
+        nextC = 0x0622;
+        break;
+    default:
+        nextC = 0;
+        qDebug("Unknow Case..");
+    }
+
+    addComposedTwoCases(ch, nextC, endInfo, singleInfo);
+}
+
+void JGenerator::addComposedTwoCases(ushort ch, ushort nextC, CharInfo *endInfo, CharInfo *singleInfo)
+{
+    _composeCharWidth.append(QString("if(ch == 0x%1 && nextChar == 0x%2){"
+                                     "if(!isArabicChar(prevChar) || getCharCases(prevChar) == 2) {""\n"
+                                     "charWidth = %3;""\n"
+                                     "} else {""\n"
+                                     "charWidth = %4;""\n"
+                                     "}""\n"
+                                     "}\n")
+                             .arg(ch, 0, 16)
+                             .arg(nextC, 0, 16)
+                             .arg(singleInfo->width())
+                             .arg(endInfo->width()));
+
+    _composeCharX.append(QString("if(ch == 0x%1 && nextChar == 0x%2){"
+                                 "if(!isArabicChar(prevChar) || getCharCases(prevChar) == 2) {""\n"
+                                 "charX = %3;""\n"
+                                 "} else {""\n"
+                                 "charX = %4;""\n"
+                                 "}""\n"
+                                 "}\n")
+                         .arg(ch, 0, 16)
+                         .arg(nextC, 0, 16)
+                         .arg(singleInfo->x())
+                         .arg(endInfo->x()));
+}
+
 void JGenerator::addTwoCases(ushort ch, CharInfo *endInfo, CharInfo *singleInfo)
 {
     _charWidth.append(QString("case 0x%1:""\n"
@@ -166,6 +236,49 @@ void JGenerator::addTwoCases(ushort ch, CharInfo *endInfo, CharInfo *singleInfo)
 
 void JGenerator::addFourCases(ushort ch, CharInfo *startInfo, CharInfo *middleInfo, CharInfo *endInfo, CharInfo *singleInfo)
 {
+
+    if(ch == 0x644) {
+        _charWidth.append(QString("case 0x%1:""\n"
+                                  "if(nextChar == 0x627 || nextChar == 0x622 || nextChar == 0x623 || nextChar == 0x625){\n"
+                                  "charWidth = getComposedCharWidth(ch, nextChar, prevChar);"
+                                  "} else {\n"
+                                  "if((!isArabicChar(prevChar) && !(getCharCases(prevChar) == 2)) || (isArabicChar(nextChar) &&  getCharCases(prevChar) == 2)) {""\n"
+                                  "charWidth = %2;""\n"
+                                  "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
+                                  "charWidth = %3;""\n"
+                                  "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
+                                  "charWidth = %4;""\n"
+                                  "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 2) {""\n"
+                                  "charWidth = %5;""\n"
+                                  "}""\n"
+                                  "}\n"
+                                  "break;""\n")
+                          .arg(ch, 0, 16)
+                          .arg(startInfo->width())
+                          .arg(middleInfo->width())
+                          .arg(endInfo->width())
+                          .arg(singleInfo->width()));
+        _charX.append(QString("case 0x%1:""\n"
+                                  "if(nextChar == 0x627 || nextChar == 0x622 || nextChar == 0x623 || nextChar == 0x625){\n"
+                                  "charX = getComposedCharX(ch, nextChar, prevChar);"
+                                  "} else {\n"
+                                  "if((!isArabicChar(prevChar) && !(getCharCases(prevChar) == 2)) || (isArabicChar(nextChar) &&  getCharCases(prevChar) == 2)) {""\n"
+                                  "charX = %2;""\n"
+                                  "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
+                                  "charX = %3;""\n"
+                                  "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
+                                  "charX = %4;""\n"
+                                  "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 2) {""\n"
+                                  "charX = %5;""\n"
+                                  "}""\n"
+                                  "}\n"
+                                  "break;""\n")
+                          .arg(ch, 0, 16)
+                          .arg(startInfo->x())
+                          .arg(middleInfo->x())
+                          .arg(endInfo->x())
+                          .arg(singleInfo->x()));
+    } else {
     _charWidth.append(QString("case 0x%1:""\n"
                               "if((!isArabicChar(prevChar) && !(getCharCases(prevChar) == 2)) || (isArabicChar(nextChar) &&  getCharCases(prevChar) == 2)) {""\n"
                               "charWidth = %2;""\n"
@@ -199,6 +312,7 @@ void JGenerator::addFourCases(ushort ch, CharInfo *startInfo, CharInfo *middleIn
                   .arg(middleInfo->x())
                   .arg(endInfo->x())
                   .arg(singleInfo->x()));
+    }
 }
 
 QStringList JGenerator::getFunctions()
@@ -214,9 +328,17 @@ QStringList JGenerator::getFunctions()
                   "}\n\n"
                   "return charX;\n"
                   "}\n");
+
+    _composeCharWidth.append("return charWidth;\n"
+                             "}\n");
+    _composeCharX.append("return charX;\n"
+                             "}\n");
     QStringList functions;
+    functions.append(_composeCharWidth);
+    functions.append(_composeCharX);
     functions.append(_charWidth);
     functions.append(_charX);
 
     return functions;
 }
+

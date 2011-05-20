@@ -207,14 +207,12 @@ void MainWindow::generateInfoList()
 
         if(m_fourCases.contains(currentC.unicode())) {
             info->chCase = CharInfo::FourCases;
-/*
+
             if(currentC.unicode() == 0x644 && (nextC.unicode() == 0x627
                                                || nextC.unicode() == 0x622
                                                || nextC.unicode() == 0x623
                                                || nextC.unicode() == 0x625)) {
                 info->composed = true;
-                //info->composed = true;
-                //info->composed = true;
 
                 if(nextC.unicode() == 0x627)
                     info->composedType =  CharInfo::LamAlef;
@@ -225,13 +223,17 @@ void MainWindow::generateInfoList()
                 else if(nextC.unicode() == 0x622)
                     info->composedType =  CharInfo::LamAlefMada;
 
+                if(prevC.isNull() || prevC.isSpace())
+                    info->position = CharInfo::SINGLE;
+                else
+                    info->position = CharInfo::END;
                 //info->rect.setWidth(1000);
                 //info->ch = currentC;
-                charList << info;
                 //i--;
+                m_fullList << info;
                 continue;
             }
-*/
+
             if((prevC.isNull() || prevC.isSpace()) && !(nextC.isNull() || nextC.isSpace())) {
                 info->position = CharInfo::START;
             } else if((nextC.isNull() || nextC.isSpace()) && !(prevC.isNull() || prevC.isSpace())) {
@@ -242,25 +244,23 @@ void MainWindow::generateInfoList()
                 info->position = CharInfo::MIDDLE;
             }
         } else if(m_twoCases.contains(currentC.unicode())) {
-            /*
+
             if(prevC.unicode() == 0x644 && (currentC.unicode() == 0x627
                                             || currentC.unicode() == 0x622
                                             || currentC.unicode() == 0x623
                                             || currentC.unicode() == 0x625)) {
-                info->widthAdded = true;
-                info->xAdded = true;
+                //info->widthAdded = true;
+                //info->xAdded = true;
                 info->ignore = true;
                 info->composed = true;
                 //continue;
-            } else {
-            */
+            }
                 info->chCase = CharInfo::TwoCases;
 
                 if(prevC.isNull() || prevC.isSpace())
                     info->position = CharInfo::SINGLE;
                 else
                     info->position = CharInfo::END;
-            /*}*/
         }
 
         m_fullList << info;
@@ -301,11 +301,6 @@ void MainWindow::on_pushButton_4_clicked()
     ui->labelPreview->pixmap()->save(ui->lineOutputFile->text() ,"PNG");
 }
 
-void MainWindow::on_pushSaveFile_clicked()
-{
-
-}
-
 void MainWindow::on_pushButton_5_clicked()
 {
     QString text;
@@ -322,28 +317,10 @@ void MainWindow::on_pushButton_5_clicked()
         text.append(" ");
     }
 
-    //text.append(trUtf8("لا ـلا لأ ـلأ لآ ـلآ لإ ـلإ "));
+    text.append(trUtf8("لا ـلا لأ ـلأ لآ ـلآ لإ ـلإ "));
     text.append(trUtf8("123456789[]{}+_)(*&^%$#@!~=-.<>,،ـ"));
 
     ui->lineEdit->setText(text);
-    /*
-    int count=0;
-    for(int i=0x621; i<0x64B; i++) {
-        if(0x63B <= i && i <= 0x640)
-            continue;
-
-        if(twoCases.contains(i)) {
-            qDebug() << trUtf8("%1 ـ%1").arg(QChar(i));
-        } else {
-            qDebug() << trUtf8("%1%1%1").arg(QChar(i));
-        }
-
-//        qDebug() << tr("0x%1").arg(i,0, 16) << QChar(i);
-        count++;
-    }
-    qDebug("Count: %d", count);
-*/
-
 }
 
 void MainWindow::on_pushButton_6_clicked()
@@ -409,9 +386,8 @@ void MainWindow::on_pushGenCode_clicked()
 {
     generateCleanList();
 
-    QString text;
+//    QString text;
     QTextEdit *edit = new QTextEdit(0);
-    int totalCharsWidth = getCharsWidth();
 
     JGenerator generator;
     qDebug() << "Start with" << m_cleanList.count() << "Chars";
@@ -421,12 +397,16 @@ void MainWindow::on_pushGenCode_clicked()
         if(info->widthAdded)
             continue;
 
-        if(JGenerator::isArabicChar(ch)) {
-            qDebug() << "Add arabic" << info->ch;
-            generator.addArabic(ch, getCharInfo(ch));
+        if(!info->composed) {
+            if(JGenerator::isArabicChar(ch)) {
+                qDebug() << "Add arabic" << info->ch;
+                generator.addArabic(ch, getCharInfo(ch));
+            } else {
+                qDebug() << "Add simple" << info->ch;
+                generator.addSimple(ch, getCharInfo(ch).first());
+            }
         } else {
-            qDebug() << "Add simple" << info->ch;
-            generator.addSimple(ch, getCharInfo(ch).first());
+            generator.addComposed(ch, info->composedType, getCharInfo(ch, info->composedType));
         }
     }
 
@@ -435,30 +415,30 @@ void MainWindow::on_pushGenCode_clicked()
 }
 
 
-CharInfo *MainWindow::getCharInfo(ushort ch, CharInfo::Composed composed)
+QList<CharInfo*> MainWindow::getCharInfo(ushort ch, CharInfo::Composed composed)
 {
-    CharInfo *charInfo = 0;
+    QList<CharInfo*> list;
     foreach(CharInfo *ci, m_cleanList) {
         if(ci->ch.unicode() == ch && ci->composed && ci->composedType == composed) {
             ci->widthAdded = true;
-            charInfo = ci;
-//            qDebug() << "Got some for:" << ch;
+            list << ci;
         }
     }
 
-    if(!ch){
+    if(list.isEmpty()){
         qDebug() << "Got nothing for:" << ch << ":" << composed;
-        charInfo = new CharInfo();
+    } else {
+        qDebug() << "Got for a composed:" << list.count();
     }
 
-    return charInfo;
+    return list;
 }
 
 QList<CharInfo*> MainWindow::getCharInfo(ushort ch)
 {
     QList<CharInfo*> list;
     foreach(CharInfo *ci, m_cleanList) {
-        if(ci->ch.unicode() == ch) {
+        if(ci->ch.unicode() == ch && !ci->composed) {
             ci->widthAdded = true;
             list.append(ci);
         }
@@ -466,57 +446,4 @@ QList<CharInfo*> MainWindow::getCharInfo(ushort ch)
 
     qDebug() << "Got:" << list.count() << "for:" << "0x"+QString::number(ch, 16);
     return list;
-}
-
-int MainWindow::getCharsWidth()
-{
-    int dis_x = 0;
-    for(int i=0; i<m_fullList.count();i++) {
-        if(m_fullList.at(i)->ignore)
-            continue;
-
-        dis_x += m_fullList.at(i)->rect.width();
-    }
-
-    return dis_x;
-}
-
-int MainWindow::getCharX(CharInfo *ch, int w)
-{
-    for(int i=m_cleanList.count()-1; i>=0;i--) {
-        CharInfo *ci = m_cleanList.at(i);
-        if(ci->ignore)
-            continue;
-
-        w -= ci->rect.width();
-
-        if(ci->ch == ch->ch && ch->position == ci->position)
-            break;
-    }
-    ch->xAdded = true;
-    //qDebug() << ch->ch << "==" << w;
-    if(w<0)
-        qDebug() << "********************* What **************";
-    return w;
-}
-
-int MainWindow::getCharX(ushort ch, int w, CharInfo::Composed composed)
-{
-    for(int i=m_cleanList.count()-1; i>=0;i--) {
-        CharInfo *ci = m_cleanList.at(i);
-        if(ci->ignore)
-            continue;
-
-        w -= ci->rect.width();
-
-        if(ci->ch == ch && ci->composedType == composed) {
-         ci->xAdded = true;
-            break;
-        }
-    }
-//    ch->xAdded = true;
-    //qDebug() << ch->ch << "==" << w;
-    if(w<0)
-        qDebug() << "********************* What **************";
-    return w;
 }

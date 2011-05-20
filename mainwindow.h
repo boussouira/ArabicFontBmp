@@ -23,11 +23,7 @@ public:
     void generateInfoList();
     void generateCleanList();
     QList<CharInfo*> getCharInfo(ushort ch);
-    int getCharX(CharInfo *ch, int w);
-    int getCharsWidth();
-
-    CharInfo * getCharInfo(ushort ch, CharInfo::Composed composed);
-    int getCharX(ushort ch, int w, CharInfo::Composed composed);
+    QList<CharInfo*> getCharInfo(ushort ch, CharInfo::Composed composed);
 
 private slots:
     void on_pushButton_clicked();
@@ -35,13 +31,10 @@ private slots:
     void on_pushButton_3_clicked();
     void on_lineEdit_editingFinished();
     void on_pushButton_4_clicked();
-    void on_pushSaveFile_clicked();
     void on_pushButton_5_clicked();
     void on_pushButton_6_clicked();
     void on_pushButton_7_clicked();
     void on_pushButton_8_clicked();
-
-
     void on_pushGenCode_clicked();
 
 private:
@@ -50,7 +43,6 @@ private:
     QColor m_fgColor;
     QColor m_bgColor;
     CharInfoWidget *m_charWidget;
-//    QList<CharInfo*> m_cleanCharList;
     QList<ushort> m_twoCases;
     QList<ushort> m_fourCases;
     QList<ushort> m_ignoreChars;
