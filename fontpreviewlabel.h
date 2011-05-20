@@ -13,9 +13,9 @@ public:
     ~FontPreviewLabel();
     void setRectList(QList<CharInfo*> list);
     void setCharInfoWidget(CharInfoWidget *w);
-    QList<CharInfo *> getRectList();
 
 protected:
+    QList<CharInfo *> getRectList();
     void mousePressEvent(QMouseEvent *ev);
 
 protected:

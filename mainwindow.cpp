@@ -57,14 +57,14 @@ void MainWindow::on_pushButton_clicked()
 void MainWindow::generateOptions()
 {
     QFontMetrics fontInfo(m_font);
-    int textH = fontInfo.height()+5;
+    int textH = fontInfo.height();
     int textW = fontInfo.width(ui->lineEdit->text());
 
     ui->spinImageH->setValue(textH);
     ui->spinImageW->setValue(textW);
 
     ui->spinDrawX->setValue(0);
-    ui->spinDrawY->setValue(fontInfo.lineSpacing());
+    ui->spinDrawY->setValue(fontInfo.lineSpacing()-fontInfo.descent());
 }
 
 void MainWindow::on_pushButton_2_clicked()
@@ -113,7 +113,7 @@ void MainWindow::on_pushButton_2_clicked()
 //    ui->plainTextEdit->setPlainText(rendText);
     ui->labelPreview->setPixmap(m_pixMap);
     if(m_fontChanged) {
-        generateInfo();
+        generateInfoList();
         m_fontChanged = false;
     }
 //    qDebug() << "Leasing:" << fontInfo.leading();
@@ -140,7 +140,7 @@ void MainWindow::on_pushButton_3_clicked()
     distRect.setY(0);
     int dis_x = 0;
 
-    foreach(CharInfo *ci, ui->labelPreview->getRectList()) {
+    foreach(CharInfo *ci, m_fullList) {
         distRect.setX(dis_x);
         distRect.setWidth(ci->rect.width());
 
@@ -158,115 +158,142 @@ void MainWindow::on_pushButton_3_clicked()
     ui->labelPreview->setPixmap(img);
 }
 
-void MainWindow::generateInfo()
+void MainWindow::generateInfoList()
 {
     QString text = ui->lineEdit->text();
     QFontMetrics fontInfo(m_font);
     QRect rect;
-    QList<CharInfo*> charList;
     int cx = 0;
 
-    if(!ui->checkBox->isChecked()) {
-        for(int i=0; i<text.size();i++) {
-            //qDebug() << "Char:" << text.at(i) << "at:" << i;
-            CharInfo *info = new CharInfo;
-            int w = fontInfo.charWidth(text, i);
-            rect.setRect(cx, 0, w, ui->spinImageH->value());
-            cx += w;
+    m_fullList.clear();
 
-            info->rect = rect;
-            info->ch = text.at(i);
+    for(int i=text.size()-1; i>=0;i--) {
+        //qDebug() << "Char:" << text.at(i) << "at:" << i;
+        CharInfo *info = new CharInfo;
+        int w = fontInfo.charWidth(text, i);
+        rect.setRect(cx, 0, w, ui->spinImageH->value());
+        cx += w;
+        info->rect = rect;
+        info->ch = text.at(i);
 
-            charList << info;
-        }
-    } else {
-        for(int i=text.size()-1; i>=0;i--) {
-            //qDebug() << "Char:" << text.at(i) << "at:" << i;
-            CharInfo *info = new CharInfo;
-            int w = fontInfo.charWidth(text, i);
-            rect.setRect(cx, 0, w, ui->spinImageH->value());
-            cx += w;
-            info->rect = rect;
-            info->ch = text.at(i);
+        QChar prevC;
+        if(i-1 >= 0)
+            prevC = text.at(i-1);
+        else
+            prevC = 0;
+        QChar currentC = text.at(i);
+        QChar nextC;
+        if(i+1 < text.size())
+            nextC = text.at(i+1);
+        else
+            nextC=0;
 
-            QChar prevC;
-            if(i-1 >= 0)
-                prevC = text.at(i-1);
-            else
-                prevC = 0;
-            QChar currentC = text.at(i);
-            QChar nextC;
-            if(i+1 < text.size())
-                nextC = text.at(i+1);
-            else
-                nextC=0;
-
-            if(m_fourCases.contains(currentC.unicode())) {
-                info->chCase = CharInfo::FourCases;
-
-                if(currentC.unicode() == 0x644 && (nextC.unicode() == 0x627
-                                                   || nextC.unicode() == 0x622
-                                                   || nextC.unicode() == 0x623
-                                                   || nextC.unicode() == 0x625)) {
-                    info->composed = true;
-//                    info->composed = true;
-//                    info->composed = true;
-
-                    if(nextC.unicode() == 0x627)
-                        info->composedType =  CharInfo::LamAlef;
-                    else if(nextC.unicode() == 0x623)
-                        info->composedType =  CharInfo::LamAlefHamezaAbove;
-                    else if(nextC.unicode() == 0x625)
-                        info->composedType =  CharInfo::LamAlefHamezaBelow;
-                    else if(nextC.unicode() == 0x622)
-                        info->composedType =  CharInfo::LamAlefMada;
-
-//                    info->rect.setWidth(1000);
-//                    info->ch = currentC;
-                    charList << info;
-              //      i--;
-                    continue;
-                }
-
-                if((prevC.isNull() || prevC.isSpace()) && !(nextC.isNull() || nextC.isSpace())) {
-                    info->position = CharInfo::START;
-                } else if((nextC.isNull() || nextC.isSpace()) && !(prevC.isNull() || prevC.isSpace())) {
-                    info->position = CharInfo::END;
-                } else if((nextC.isNull() || nextC.isSpace()) && (prevC.isNull() || prevC.isSpace())) {
-                    info->position = CharInfo::SINGLE;
-                } else {
-                    info->position = CharInfo::MIDDLE;
-                }
-            } else if(m_twoCases.contains(currentC.unicode())) {
-                if(prevC.unicode() == 0x644 && (currentC.unicode() == 0x627
-                                                || currentC.unicode() == 0x622
-                                                || currentC.unicode() == 0x623
-                                                || currentC.unicode() == 0x625)) {
-                    info->widthAdded = true;
-                    info->xAdded = true;
-                    info->ignore = true;
-                    info->composed = true;
-             //       continue;
-                } else {
-                    info->chCase = CharInfo::TwoCases;
-
-                    if(prevC.isNull() || prevC.isSpace())
-                        info->position = CharInfo::SINGLE;
-                    else
-                        info->position = CharInfo::END;
-                }
+        if(currentC == 0x640) {
+            if(m_ignoreChars.contains(0x640)) {
+               info->ignore = true;
+            } else {
+                m_ignoreChars.append(0x640);
+                qDebug("dont ignore at %d", i);
             }
-
-            charList << info;
         }
+
+        if(currentC == 0x20) {
+            if(m_ignoreChars.contains(0x20)) {
+                info->ignore = true;
+            } else {
+                m_ignoreChars.append(0x20);
+            }
+        }
+
+        if(m_fourCases.contains(currentC.unicode())) {
+            info->chCase = CharInfo::FourCases;
+/*
+            if(currentC.unicode() == 0x644 && (nextC.unicode() == 0x627
+                                               || nextC.unicode() == 0x622
+                                               || nextC.unicode() == 0x623
+                                               || nextC.unicode() == 0x625)) {
+                info->composed = true;
+                //info->composed = true;
+                //info->composed = true;
+
+                if(nextC.unicode() == 0x627)
+                    info->composedType =  CharInfo::LamAlef;
+                else if(nextC.unicode() == 0x623)
+                    info->composedType =  CharInfo::LamAlefHamezaAbove;
+                else if(nextC.unicode() == 0x625)
+                    info->composedType =  CharInfo::LamAlefHamezaBelow;
+                else if(nextC.unicode() == 0x622)
+                    info->composedType =  CharInfo::LamAlefMada;
+
+                //info->rect.setWidth(1000);
+                //info->ch = currentC;
+                charList << info;
+                //i--;
+                continue;
+            }
+*/
+            if((prevC.isNull() || prevC.isSpace()) && !(nextC.isNull() || nextC.isSpace())) {
+                info->position = CharInfo::START;
+            } else if((nextC.isNull() || nextC.isSpace()) && !(prevC.isNull() || prevC.isSpace())) {
+                info->position = CharInfo::END;
+            } else if((nextC.isNull() || nextC.isSpace()) && (prevC.isNull() || prevC.isSpace())) {
+                info->position = CharInfo::SINGLE;
+            } else {
+                info->position = CharInfo::MIDDLE;
+            }
+        } else if(m_twoCases.contains(currentC.unicode())) {
+            /*
+            if(prevC.unicode() == 0x644 && (currentC.unicode() == 0x627
+                                            || currentC.unicode() == 0x622
+                                            || currentC.unicode() == 0x623
+                                            || currentC.unicode() == 0x625)) {
+                info->widthAdded = true;
+                info->xAdded = true;
+                info->ignore = true;
+                info->composed = true;
+                //continue;
+            } else {
+            */
+                info->chCase = CharInfo::TwoCases;
+
+                if(prevC.isNull() || prevC.isSpace())
+                    info->position = CharInfo::SINGLE;
+                else
+                    info->position = CharInfo::END;
+            /*}*/
+        }
+
+        m_fullList << info;
     }
-    ui->labelPreview->setRectList(charList);
+
+    generateCleanList();
+    ui->labelPreview->setRectList(m_fullList);
+}
+
+void MainWindow::generateCleanList()
+{
+    int cx=0;
+
+    qDeleteAll(m_cleanList);
+    m_cleanList.clear();
+
+    for(int i=0; i<m_fullList.size();i++) {
+        if(m_fullList.at(i)->ignore)
+            continue;
+
+        CharInfo *info = new CharInfo(m_fullList.at(i));
+
+        info->rect.moveLeft(cx);
+        m_cleanList.append(info);
+
+        cx += info->width();
+    }
 }
 
 void MainWindow::on_lineEdit_editingFinished()
 {
     generateOptions();
-    generateInfo();
+    generateInfoList();
 }
 
 void MainWindow::on_pushButton_4_clicked()
@@ -295,7 +322,7 @@ void MainWindow::on_pushButton_5_clicked()
         text.append(" ");
     }
 
-    text.append(trUtf8("لا ـلا لأ ـلأ لآ ـلآ لإ ـلإ "));
+    //text.append(trUtf8("لا ـلا لأ ـلأ لآ ـلآ لإ ـلإ "));
     text.append(trUtf8("123456789[]{}+_)(*&^%$#@!~=-.<>,،ـ"));
 
     ui->lineEdit->setText(text);
@@ -331,7 +358,6 @@ void MainWindow::on_pushButton_7_clicked()
 
 void MainWindow::on_pushButton_8_clicked()
 {
-    QList<CharInfo*> charList = ui->labelPreview->getRectList();
     int textH = ui->spinImageH->value();
     int textW = ui->spinImageW->value();
 
@@ -354,8 +380,8 @@ void MainWindow::on_pushButton_8_clicked()
 
     int dis_x = 0;
 
-    for(int i=0; i<charList.count();i++) {
-        CharInfo *ci = charList.at(i);
+    for(int i=0; i<m_fullList.count();i++) {
+        CharInfo *ci = m_fullList.at(i);
 
         if(ci->ignore)
             continue;
@@ -381,287 +407,30 @@ void MainWindow::on_pushButton_8_clicked()
 
 void MainWindow::on_pushGenCode_clicked()
 {
-    on_pushButton_3_clicked();
+    generateCleanList();
 
     QString text;
     QTextEdit *edit = new QTextEdit(0);
     int totalCharsWidth = getCharsWidth();
 
-    /*
-    QList<CharInfo*> cil = ui->labelPreview->getRectList();
-    int dis_x = 0;
-    m_cleanCharList.clear();
-    for(int i=0; i<cil.count();i++) {
-        if(cil.at(i)->ignore)
+    JGenerator generator;
+    qDebug() << "Start with" << m_cleanList.count() << "Chars";
+    foreach(CharInfo *info, m_cleanList) {
+        ushort ch = info->ch.unicode();
+
+        if(info->widthAdded)
             continue;
 
-        CharInfo *ci = new CharInfo();
-        ci->rect = cil.at(i)->rect;
-        ci->ch = cil.at(i)->ch;
-        ci->chCase = cil.at(i)->chCase;
-        ci->position = cil.at(i)->position;
-        ci->ignore = cil.at(i)->ignore;
-        ci->rect.setX(dis_x);
-
-        m_cleanCharList << ci;
-
-        dis_x += ci->rect.width();
-    }
-*/
-    text.append("public int getCharCases(char ch){" "\n");
-    text.append("int ret;\n");
-
-    // Two cases
-    text.append("switch(ch) {" "\n");
-    foreach(ushort ch, m_twoCases)
-        text.append(QString("case 0x%1:\n").arg(ch, 0, 16));
-    text.append("ret = 2;" "\n");
-    text.append("break;" "\n\n");
-
-    // Four cases
-    foreach(ushort ch, m_fourCases)
-        text.append(QString("case 0x%1:\n").arg(ch, 0, 16));
-    text.append("ret = 4;" "\n");
-    text.append("break;" "\n");
-
-    text.append("default:" "\n");
-    text.append("ret = 0;" "\n");
-
-    text.append("}" "\n\n");
-    text.append("return ret;" "\n");
-    text.append("}" "\n\n");
-
-    text.append("public boolean isArabicChar(char ch){" "\n");
-    text.append("return (0x0621 <= ch &&  ch <= 0x064A);" "\n");
-    text.append("}" "\n\n");
-
-    /******** getCharWidth *********/
-    text.append("public int getCharWidth(char ch, char nextChar, char prevChar) {""\n"
-                "int charWidth=0;""\n"
-                "if(isArabicChar(ch)) {""\n");
-    // Handle LAAM+ALEF cases
-    text.append("if(ch == 0x644){\n");
-    text.append("switch(nextChar){\n");
-
-    text.append("case 0x622:\n");
-    text.append(tr("return %1;\n").arg(getCharInfo(0x644, CharInfo::LamAlefMada)->rect.width()));
-
-    text.append("case 0x623:\n");
-    text.append(tr("return %1;\n").arg(getCharInfo(0x644, CharInfo::LamAlefHamezaAbove)->rect.width()));
-
-    text.append("case 0x625:\n");
-    text.append(tr("return %1;\n").arg(getCharInfo(0x644, CharInfo::LamAlefHamezaBelow)->rect.width()));
-
-    text.append("case 0x627:\n");
-    text.append(tr("return %1;\n").arg(getCharInfo(0x644, CharInfo::LamAlef)->rect.width()));
-
-    text.append("}\n");
-    text.append("}\n");
-    text.append("switch(ch) {""\n");
-    foreach(ushort ch, m_twoCases) {
-        int caseEndWidth=0;
-        int caseSingleWidth=0;
-
-        foreach(CharInfo* ci, getCharInfo(ch)) {
-            if(ci->position == CharInfo::END) {
-                caseEndWidth = ci->rect.width();
-            } else if (ci->position == CharInfo::SINGLE) {
-                caseSingleWidth = ci->rect.width();
-            } else {
-                qDebug("Not handled: %d", ci->position);
-            }
-        }
-
-        text.append(QString("case 0x%1:""\n"
-                            "if(!isArabicChar(prevChar) || getCharCases(prevChar) == 2) {""\n"
-                            "charWidth = %2;""\n"
-                            "} else {""\n"
-                            "charWidth = %3;""\n"
-                            "}""\n"
-                            "break;""\n").arg(ch, 0, 16).arg(caseSingleWidth).arg(caseEndWidth));
-    }
-
-    //    text.append("default:""\n"
-    //                "charWidth = 0;""\n"
-    //                "}""\n"
-    //                "} else {""\n"
-    //                "switch(ch) {""\n");
-
-    foreach(ushort ch, m_fourCases) {
-        int caseStartWidth=0;
-        int caseMiddleWidth=0;
-        int caseEndWidth=0;
-        int caseSingleWidth=0;
-
-        foreach(CharInfo* ci, getCharInfo(ch)) {
-            if(ci->position == CharInfo::START) {
-                caseStartWidth = ci->rect.width();
-            } else if (ci->position == CharInfo::MIDDLE) {
-                caseMiddleWidth = ci->rect.width();
-            } else if (ci->position == CharInfo::END) {
-                caseEndWidth = ci->rect.width();
-            } else if (ci->position == CharInfo::SINGLE) {
-                caseSingleWidth = ci->rect.width();
-            } else {
-                qDebug("Not handled: %d", ci->position);
-            }
-        }
-
-        text.append(QString("case 0x%1:""\n"
-                            "if((!isArabicChar(prevChar) && !(getCharCases(prevChar) == 2)) || (isArabicChar(nextChar) &&  getCharCases(prevChar) == 2)) {""\n"
-                            "charWidth = %2;""\n"
-                            "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
-                            "charWidth = %3;""\n"
-                            "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
-                            "charWidth = %4;""\n"
-                            "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 2) {""\n"
-                            "charWidth = %5;""\n"
-                            //                           "} else {""\n"
-                            //                           "System.err.println(\"What to do?\");""\n"
-                            //                           "charWidth = 0;""\n"
-                            "}""\n"
-                            "break;""\n").arg(ch, 0, 16).arg(caseStartWidth).arg(caseMiddleWidth).arg(caseEndWidth).arg(caseSingleWidth));
-    }
-
-    text.append("default:""\n"
-                "charWidth = 0;""\n"
-                "}""\n"
-                "}");
-
-    text.append(" else {\n");
-    text.append("switch(ch) {\n");
-
-    foreach(CharInfo *chInfo, ui->labelPreview->getRectList()){
-        ushort ch = chInfo->ch.unicode();
-
-        if(!chInfo->widthAdded && !chInfo->ignore) {
-            text.append(QString("case 0x%1:""\n"
-                                "charWidth = %2;""\n"
-                                "break;""\n").arg(ch, 0, 16).arg(chInfo->rect.width()));
-            chInfo->widthAdded = true;
+        if(JGenerator::isArabicChar(ch)) {
+            qDebug() << "Add arabic" << info->ch;
+            generator.addArabic(ch, getCharInfo(ch));
+        } else {
+            qDebug() << "Add simple" << info->ch;
+            generator.addSimple(ch, getCharInfo(ch).first());
         }
     }
 
-    text.append("}\n");
-    text.append("}\n\n");
-    text.append("return charWidth;""\n"
-                "}""\n\n");
-    /******** getCharWidth *********/
-
-    /******** getCharX *********/
-    text.append("public int getCharX(char ch, char nextChar, char prevChar) {""\n"
-                "int charX=0;""\n"
-                "if(isArabicChar(ch)) {""\n");
-    // Handle LAAM+ALEF cases
-    text.append("if(ch == 0x644){\n");
-    text.append("switch(nextChar){\n");
-
-    text.append("case 0x622:\n");
-    text.append(tr("return %1;\n").arg(getCharX(0x644, totalCharsWidth, CharInfo::LamAlefMada)));
-
-    text.append("case 0x623:\n");
-    text.append(tr("return %1;\n").arg(getCharX(0x644, totalCharsWidth, CharInfo::LamAlefHamezaAbove)));
-
-    text.append("case 0x625:\n");
-    text.append(tr("return %1;\n").arg(getCharX(0x644, totalCharsWidth, CharInfo::LamAlefHamezaBelow)));
-
-    text.append("case 0x627:\n");
-    text.append(tr("return %1;\n").arg(getCharX(0x644, totalCharsWidth, CharInfo::LamAlef)));
-
-    text.append("}\n");
-    text.append("}\n");
-    text.append("switch(ch) {""\n");
-    foreach(ushort ch, m_twoCases) {
-        int caseEndX=0;
-        int caseSingleX=0;
-
-        foreach(CharInfo* ci, getCharInfo(ch)) {
-            if(ci->position == CharInfo::END) {
-                caseEndX = getCharX(ci, totalCharsWidth);
-            } else if (ci->position == CharInfo::SINGLE) {
-                caseSingleX = getCharX(ci, totalCharsWidth);
-            } else {
-                qDebug("Not handled: %d", ci->position);
-            }
-        }
-
-        text.append(QString("case 0x%1:""\n"
-                            "if(!isArabicChar(prevChar) || getCharCases(prevChar) == 2) {""\n"
-                            "charX = %2;""\n"
-                            "} else {""\n"
-                            "charX = %3;""\n"
-                            "}""\n"
-                            "break;""\n").arg(ch, 0, 16).arg(caseSingleX).arg(caseEndX));
-    }
-
-    //    text.append("default:""\n"
-    //                "charX = 0;""\n"
-    //                "}""\n"
-    //                "} else {""\n"
-    //                "switch(ch) {""\n");
-
-    foreach(ushort ch, m_fourCases) {
-        int caseStartX=0;
-        int caseMiddleX=0;
-        int caseEndX=0;
-        int caseSingleX=0;
-
-        foreach(CharInfo* ci, getCharInfo(ch)) {
-            if(ci->position == CharInfo::START) {
-                caseStartX = getCharX(ci, totalCharsWidth);
-            } else if (ci->position == CharInfo::MIDDLE) {
-                caseMiddleX = getCharX(ci, totalCharsWidth);
-            } else if (ci->position == CharInfo::END) {
-                caseEndX = getCharX(ci, totalCharsWidth);
-            } else if (ci->position == CharInfo::SINGLE) {
-                caseSingleX = getCharX(ci, totalCharsWidth);
-            } else {
-                qDebug("Not handled: %d", ci->position);
-            }
-        }
-
-        text.append(QString("case 0x%1:""\n"
-                            "if((!isArabicChar(prevChar) && !(getCharCases(prevChar) == 2)) || (isArabicChar(nextChar) &&  getCharCases(prevChar) == 2)) {""\n"
-                            "charX = %2;""\n"
-                            "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
-                            "charX = %3;""\n"
-                            "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
-                            "charX = %4;""\n"
-                            "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 2) {""\n"
-                            "charX = %5;""\n"
-                            //                            "} else {""\n"
-                            //                            "System.err.println(\"What to do?\");""\n"
-                            //                            "charX = 0;""\n"
-                            "}""\n"
-                            "break;""\n").arg(ch, 0, 16).arg(caseStartX).arg(caseMiddleX).arg(caseEndX).arg(caseSingleX));
-    }
-
-    text.append("default:""\n"
-                "charX = 0;""\n"
-                "}""\n\n"
-                "}""\n");
-
-    text.append(" else {\n");
-    text.append("switch(ch) {\n");
-
-    foreach(CharInfo *chInfo, ui->labelPreview->getRectList()){
-        ushort ch = chInfo->ch.unicode();
-
-        if(!chInfo->xAdded && !chInfo->ignore) {
-            text.append(QString("case 0x%1:""\n"
-                                "charX = %2;""\n"
-                                "break;""\n").arg(ch, 0, 16).arg(getCharX(chInfo, totalCharsWidth)));
-            chInfo->xAdded = true;
-        }
-    }
-
-    text.append("}""\n");
-    text.append("}""\n\n");
-    text.append("return charX;""\n"
-                "}""\n\n");
-    /******** getCharX *********/
-
-    edit->setText(text);
+    edit->setText(generator.getFunctions().join("\n/*********/\n"));
     edit->show();
 }
 
@@ -669,7 +438,7 @@ void MainWindow::on_pushGenCode_clicked()
 CharInfo *MainWindow::getCharInfo(ushort ch, CharInfo::Composed composed)
 {
     CharInfo *charInfo = 0;
-    foreach(CharInfo *ci, ui->labelPreview->getRectList()) {
+    foreach(CharInfo *ci, m_cleanList) {
         if(ci->ch.unicode() == ch && ci->composed && ci->composedType == composed) {
             ci->widthAdded = true;
             charInfo = ci;
@@ -688,8 +457,8 @@ CharInfo *MainWindow::getCharInfo(ushort ch, CharInfo::Composed composed)
 QList<CharInfo*> MainWindow::getCharInfo(ushort ch)
 {
     QList<CharInfo*> list;
-    foreach(CharInfo *ci, ui->labelPreview->getRectList()) {
-        if(ci->ch.unicode() == ch && !ci->widthAdded && !ci->composed  && !ci->ignore) {
+    foreach(CharInfo *ci, m_cleanList) {
+        if(ci->ch.unicode() == ch) {
             ci->widthAdded = true;
             list.append(ci);
         }
@@ -702,12 +471,11 @@ QList<CharInfo*> MainWindow::getCharInfo(ushort ch)
 int MainWindow::getCharsWidth()
 {
     int dis_x = 0;
-    QList<CharInfo*> cil = ui->labelPreview->getRectList();
-    for(int i=0; i<cil.count();i++) {
-        if(cil.at(i)->ignore)
+    for(int i=0; i<m_fullList.count();i++) {
+        if(m_fullList.at(i)->ignore)
             continue;
 
-        dis_x += cil.at(i)->rect.width();
+        dis_x += m_fullList.at(i)->rect.width();
     }
 
     return dis_x;
@@ -715,10 +483,8 @@ int MainWindow::getCharsWidth()
 
 int MainWindow::getCharX(CharInfo *ch, int w)
 {
-    QList<CharInfo*> charList = ui->labelPreview->getRectList();
-
-    for(int i=charList.count()-1; i>=0;i--) {
-        CharInfo *ci = charList.at(i);
+    for(int i=m_cleanList.count()-1; i>=0;i--) {
+        CharInfo *ci = m_cleanList.at(i);
         if(ci->ignore)
             continue;
 
@@ -736,10 +502,8 @@ int MainWindow::getCharX(CharInfo *ch, int w)
 
 int MainWindow::getCharX(ushort ch, int w, CharInfo::Composed composed)
 {
-    QList<CharInfo*> charList = ui->labelPreview->getRectList();
-
-    for(int i=charList.count()-1; i>=0;i--) {
-        CharInfo *ci = charList.at(i);
+    for(int i=m_cleanList.count()-1; i>=0;i--) {
+        CharInfo *ci = m_cleanList.at(i);
         if(ci->ignore)
             continue;
 

@@ -14,12 +14,14 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     fontpreviewlabel.cpp \
     charinfo.cpp \
-    charinfowidget.cpp
+    charinfowidget.cpp \
+    jgenerator.cpp
 
 HEADERS  += mainwindow.h \
     fontpreviewlabel.h \
     charinfo.h \
-    charinfowidget.h
+    charinfowidget.h \
+    jgenerator.h
 
 FORMS    += mainwindow.ui \
     charinfowidget.ui

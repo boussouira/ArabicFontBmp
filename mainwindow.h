@@ -6,6 +6,7 @@
 #include <QFontDialog>
 #include <charinfo.h>
 #include "charinfowidget.h"
+#include "jgenerator.h"
 
 namespace Ui {
     class MainWindow;
@@ -19,7 +20,8 @@ public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void generateOptions();
-    void generateInfo();
+    void generateInfoList();
+    void generateCleanList();
     QList<CharInfo*> getCharInfo(ushort ch);
     int getCharX(CharInfo *ch, int w);
     int getCharsWidth();
@@ -51,6 +53,9 @@ private:
 //    QList<CharInfo*> m_cleanCharList;
     QList<ushort> m_twoCases;
     QList<ushort> m_fourCases;
+    QList<ushort> m_ignoreChars;
+    QList<CharInfo*> m_fullList;
+    QList<CharInfo*> m_cleanList;
     bool m_fontChanged;
     Ui::MainWindow *ui;
 };

@@ -29,6 +29,8 @@ public:
     };
 
     CharInfo();
+    CharInfo(CharInfo *copy);
+
     QRect rect;
     QChar ch;
     QChar firstCh;
@@ -40,6 +42,9 @@ public:
     bool composed;
     bool widthAdded;
     bool xAdded;
+
+    int x();
+    int width();
 };
 
 #endif // CHARINFO_H
