@@ -7,6 +7,7 @@
 #include <QSettings>
 #include <QDial>
 #include <QTextEdit>
+#include <QFileDialog>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -30,24 +31,36 @@ MainWindow::MainWindow(QWidget *parent) :
     m_charWidget = new CharInfoWidget(ui->widgetCharInfo);
     ui->labelPreview->setCharInfoWidget(m_charWidget);
 
-    on_pushButton_5_clicked();
+    generateText();
     ui->checkBox->setChecked(true);
 
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QSettings s;
+    ui->lineOutputFile->setText(s.value("lastSaveFile").toString());
     m_font.fromString(s.value("font").toString());
     m_fontChanged = true;
+
+    connect(ui->pushChangeFont, SIGNAL(clicked()), SLOT(changeFont()));
+    connect(ui->pushGenerateImage, SIGNAL(clicked()), SLOT(generateImage()));
+    connect(ui->pushCleanImage, SIGNAL(clicked()), SLOT(cleanImage()));
+    connect(ui->pushCharMap, SIGNAL(clicked()), SLOT(viewCharMap()));
+    connect(ui->pushGenCode, SIGNAL(clicked()), SLOT(generateCode()));
+    connect(ui->pushSaveImage, SIGNAL(clicked()), SLOT(saveImage()));
+    connect(ui->pushFgColor, SIGNAL(clicked()), SLOT(selectFgColor()));
+    connect(ui->pushBgColor, SIGNAL(clicked()), SLOT(selectBgColor()));
+    connect(ui->pushSaveFile, SIGNAL(clicked()), SLOT(selectOutFile()));
 }
 
 MainWindow::~MainWindow()
 {
     QSettings s;
     s.setValue("font", m_font.toString());
+    s.setValue("lastSaveFile", ui->lineOutputFile->text());
 
     delete ui;
 }
 
-void MainWindow::on_pushButton_clicked()
+void MainWindow::changeFont()
 {
     m_font = QFontDialog::getFont(0, m_font, this);
     m_fontChanged = true;
@@ -67,7 +80,7 @@ void MainWindow::generateOptions()
     ui->spinDrawY->setValue(fontInfo.lineSpacing()-fontInfo.descent());
 }
 
-void MainWindow::on_pushButton_2_clicked()
+void MainWindow::generateImage()
 {
     QString arText = ui->lineArabic->text();
     QString symbolText = ui->lineSymbols->text();
@@ -111,7 +124,7 @@ void MainWindow::on_pushButton_2_clicked()
     }
 }
 
-void MainWindow::on_pushButton_3_clicked()
+void MainWindow::viewCharMap()
 {
     QPixmap img(ui->spinImageW->value(), ui->spinImageH->value());
     QRect distRect;
@@ -286,12 +299,12 @@ void MainWindow::on_lineArabic_editingFinished()
     generateInfoList();
 }
 
-void MainWindow::on_pushButton_4_clicked()
+void MainWindow::saveImage()
 {
     ui->labelPreview->pixmap()->save(ui->lineOutputFile->text() ,"PNG");
 }
 
-void MainWindow::on_pushButton_5_clicked()
+void MainWindow::generateText()
 {
     QString arText;
     QString symbolsText;
@@ -323,17 +336,17 @@ void MainWindow::on_pushButton_5_clicked()
     ui->lineSymbols->setText(symbolsText);
 }
 
-void MainWindow::on_pushButton_6_clicked()
+void MainWindow::selectFgColor()
 {
     m_fgColor = QColorDialog::getColor(m_fgColor, this);
 }
 
-void MainWindow::on_pushButton_7_clicked()
+void MainWindow::selectBgColor()
 {
     m_bgColor = QColorDialog::getColor(m_bgColor, this);
 }
 
-void MainWindow::on_pushButton_8_clicked()
+void MainWindow::cleanImage()
 {
     int textH = ui->spinImageH->value();
     int textW = ui->spinImageW->value();
@@ -382,7 +395,7 @@ void MainWindow::on_pushButton_8_clicked()
     ui->labelPreview->setPixmap(cleanPix);
 }
 
-void MainWindow::on_pushGenCode_clicked()
+void MainWindow::generateCode()
 {
     generateCleanList();
 
@@ -445,4 +458,14 @@ QList<CharInfo*> MainWindow::getCharInfo(ushort ch)
 
     qDebug() << "Got:" << list.count() << "for:" << "0x"+QString::number(ch, 16);
     return list;
+}
+
+void MainWindow::selectOutFile()
+{
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save File"),
+                                                    ui->lineOutputFile->text(),
+                                                    tr("PNG image (*.png)"));
+    if(!fileName.isEmpty()) {
+        ui->lineOutputFile->setText(fileName);
+    }
 }

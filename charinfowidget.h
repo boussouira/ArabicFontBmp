@@ -18,10 +18,14 @@ public:
     ~CharInfoWidget();
 
 private slots:
-    void on_pushSave_clicked();
+    void save();
+
+signals:
+    void charInfoChanged();
 
 private:
     CharInfo *m_charInfo;
+    bool m_loadingCharInfo;
     Ui::CharInfoWidget *ui;
 };
 
