@@ -58,7 +58,7 @@ void MainWindow::generateOptions()
 {
     QFontMetrics fontInfo(m_font);
     int textH = fontInfo.height();
-    int textW = fontInfo.width(ui->lineEdit->text());
+    int textW = fontInfo.width(ui->lineArabic->text()) + fontInfo.width(ui->lineSymbols->text());
 
     ui->spinImageH->setValue(textH);
     ui->spinImageW->setValue(textW);
@@ -69,11 +69,26 @@ void MainWindow::generateOptions()
 
 void MainWindow::on_pushButton_2_clicked()
 {
-    QString text = ui->lineEdit->text();
+    QString arText = ui->lineArabic->text();
+    QString symbolText = ui->lineSymbols->text();
     QFontMetrics fontInfo(m_font);
 
     int textH = ui->spinImageH->value();
     int textW = ui->spinImageW->value();
+    int symbolTextWidth = fontInfo.width(ui->lineSymbols->text());
+
+    QPixmap temp = QPixmap(symbolTextWidth, textH);
+    QPainter pTemp(&temp);
+    pTemp.setRenderHint(QPainter::Antialiasing);
+    pTemp.setRenderHint(QPainter::TextAntialiasing);
+    pTemp.setRenderHint(QPainter::HighQualityAntialiasing);
+    pTemp.setRenderHint(QPainter::SmoothPixmapTransform);
+
+    pTemp.fillRect(0,0, temp.width(), temp.height(), QBrush(m_bgColor));
+    pTemp.setPen(m_fgColor);
+    pTemp.setFont(m_font);
+    pTemp.drawText(ui->spinDrawX->value(), ui->spinDrawY->value(), symbolText);
+
 
     m_pixMap = QPixmap(textW, textH);
 
@@ -86,40 +101,14 @@ void MainWindow::on_pushButton_2_clicked()
     p.fillRect(0,0, m_pixMap.width(), m_pixMap.height(), QBrush(m_bgColor));
     p.setPen(m_fgColor);
     p.setFont(m_font);
-    p.drawText(ui->spinDrawX->value(), ui->spinDrawY->value(), text);
+    p.drawPixmap(0, 0, temp);
+    p.drawText(ui->spinDrawX->value()+symbolTextWidth, ui->spinDrawY->value(), arText);
 
-    int count=0;
-    QString rendText;
-    rendText.append(QString("public int charH = %1;\n").arg(textH));
-    rendText.append("public int[] charW = {\n        ");
-    for(int i=0; i<text.size();i++) {
-        rendText.append(QString("%1").arg(fontInfo.charWidth(text, i)));
-
-        if(i<text.size()-1)
-            rendText.append(", ");
-
-        if(++count >= 10) {
-            rendText.append("\n        ");
-            count = 0;
-        }
-    }
-    rendText.append("};");
-
-    rendText.append("\n\n/*\n");
-    rendText.append(QString("Char count: %1\n").arg(text.count()));
-    rendText.append(QString("Text height: %1").arg(textH));
-    rendText.append("\n*/");
-
-//    ui->plainTextEdit->setPlainText(rendText);
     ui->labelPreview->setPixmap(m_pixMap);
     if(m_fontChanged) {
         generateInfoList();
         m_fontChanged = false;
     }
-//    qDebug() << "Leasing:" << fontInfo.leading();
-//    qDebug() << "lineSpacing:" << fontInfo.lineSpacing();
-//    qDebug() << "ascent:" << fontInfo.ascent();
-//    qDebug() << "descent:" << fontInfo.descent();
 }
 
 void MainWindow::on_pushButton_3_clicked()
@@ -160,49 +149,55 @@ void MainWindow::on_pushButton_3_clicked()
 
 void MainWindow::generateInfoList()
 {
-    QString text = ui->lineEdit->text();
+    QString arText = ui->lineArabic->text();
+    QString symbolText = ui->lineSymbols->text();
     QFontMetrics fontInfo(m_font);
     QRect rect;
-    int cx = 0;
+    int sx = 0;
 
     m_fullList.clear();
 
-    for(int i=text.size()-1; i>=0;i--) {
+    for(int i=0; i<symbolText.size();i++) {
+//        qDebug() << "Char:" << symbolText.at(i) << "at:" << i;
+        CharInfo *info = new CharInfo;
+        int w = fontInfo.width(symbolText.at(i));
+        rect.setRect(sx, 0, w, ui->spinImageH->value());
+        sx += w;
+
+        info->rect = rect;
+        info->ch = symbolText.at(i);
+
+        m_fullList << info;
+    }
+
+    int ax = sx;
+    for(int i=arText.size()-1; i>=0;i--) {
         //qDebug() << "Char:" << text.at(i) << "at:" << i;
         CharInfo *info = new CharInfo;
-        int w = fontInfo.charWidth(text, i);
-        rect.setRect(cx, 0, w, ui->spinImageH->value());
-        cx += w;
+        int w = fontInfo.charWidth(arText, i);
+        rect.setRect(ax, 0, w, ui->spinImageH->value());
+        ax += w;
         info->rect = rect;
-        info->ch = text.at(i);
+        info->ch = arText.at(i);
 
         QChar prevC;
         if(i-1 >= 0)
-            prevC = text.at(i-1);
+            prevC = arText.at(i-1);
         else
             prevC = 0;
-        QChar currentC = text.at(i);
+        QChar currentC = arText.at(i);
         QChar nextC;
-        if(i+1 < text.size())
-            nextC = text.at(i+1);
+        if(i+1 < arText.size())
+            nextC = arText.at(i+1);
         else
             nextC=0;
 
-        if(currentC == 0x640) {
-            if(m_ignoreChars.contains(0x640)) {
-               info->ignore = true;
-            } else {
-                m_ignoreChars.append(0x640);
-                qDebug("dont ignore at %d", i);
-            }
+        if(currentC == 0x640 && i != arText.size()-1) {
+            info->ignore = true;
         }
 
         if(currentC == 0x20) {
-            if(m_ignoreChars.contains(0x20)) {
-                info->ignore = true;
-            } else {
-                m_ignoreChars.append(0x20);
-            }
+            info->ignore = true;
         }
 
         if(m_fourCases.contains(currentC.unicode())) {
@@ -227,9 +222,7 @@ void MainWindow::generateInfoList()
                     info->position = CharInfo::SINGLE;
                 else
                     info->position = CharInfo::END;
-                //info->rect.setWidth(1000);
-                //info->ch = currentC;
-                //i--;
+
                 m_fullList << info;
                 continue;
             }
@@ -249,11 +242,8 @@ void MainWindow::generateInfoList()
                                             || currentC.unicode() == 0x622
                                             || currentC.unicode() == 0x623
                                             || currentC.unicode() == 0x625)) {
-                //info->widthAdded = true;
-                //info->xAdded = true;
                 info->ignore = true;
                 info->composed = true;
-                //continue;
             }
                 info->chCase = CharInfo::TwoCases;
 
@@ -290,7 +280,7 @@ void MainWindow::generateCleanList()
     }
 }
 
-void MainWindow::on_lineEdit_editingFinished()
+void MainWindow::on_lineArabic_editingFinished()
 {
     generateOptions();
     generateInfoList();
@@ -303,24 +293,34 @@ void MainWindow::on_pushButton_4_clicked()
 
 void MainWindow::on_pushButton_5_clicked()
 {
-    QString text;
+    QString arText;
+    QString symbolsText;
 
     foreach(int i, m_twoCases) {
-         text.append(trUtf8("%1 ـ%1").arg(QChar(i)));
-         text.append(" ");
+         arText.append(trUtf8("%1 ـ%1").arg(QChar(i)));
+         arText.append(" ");
     }
 
     foreach(int i, m_fourCases) {
-        text.append(trUtf8("%1" "ــــ"
+        arText.append(trUtf8("%1" "ــــ"
                            "%1" "ــــ"
                            "%1 %1").arg(QChar(i)));
-        text.append(" ");
+        arText.append(" ");
     }
 
-    text.append(trUtf8("لا ـلا لأ ـلأ لآ ـلآ لإ ـلإ "));
-    text.append(trUtf8("123456789[]{}+_)(*&^%$#@!~=-.<>,،ـ"));
+    arText.append(trUtf8("لا ـلا لأ ـلأ لآ ـلآ لإ ـلإ"));
+    arText.append(trUtf8("،,’؟"));
+    arText.append(trUtf8("ـ"));
 
-    ui->lineEdit->setText(text);
+    symbolsText.append(trUtf8(" !\"#$%&'()*+,-./0123456789:;<=>?@"
+//                              "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                              "[\\]^_`"
+//                              "abcdefghijklmnopqrstuvwxyz"
+                              "{|}~"
+                              "¦«»"));
+
+    ui->lineArabic->setText(arText);
+    ui->lineSymbols->setText(symbolsText);
 }
 
 void MainWindow::on_pushButton_6_clicked()
@@ -386,7 +386,6 @@ void MainWindow::on_pushGenCode_clicked()
 {
     generateCleanList();
 
-//    QString text;
     QTextEdit *edit = new QTextEdit(0);
 
     JGenerator generator;
@@ -410,7 +409,7 @@ void MainWindow::on_pushGenCode_clicked()
         }
     }
 
-    edit->setText(generator.getFunctions().join("\n/*********/\n"));
+    edit->setText(generator.getFunctions().join("\n"));
     edit->show();
 }
 
