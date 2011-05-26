@@ -29,7 +29,6 @@ MainWindow::MainWindow(QWidget *parent) :
                 << 0x646 << 0x647 << 0x64a;
 
     m_charWidget = new CharInfoWidget(ui->widgetCharInfo);
-    ui->labelPreview->setCharInfoWidget(m_charWidget);
 
     generateText();
 
@@ -39,6 +38,7 @@ MainWindow::MainWindow(QWidget *parent) :
     m_font.fromString(s.value("font").toString());
     m_fontChanged = true;
     m_antiAliase = true;
+
     connect(ui->pushChangeFont, SIGNAL(clicked()), SLOT(changeFont()));
     connect(ui->pushGenerateImage, SIGNAL(clicked()), SLOT(generateImage()));
     connect(ui->pushCleanImage, SIGNAL(clicked()), SLOT(cleanImage()));
@@ -48,6 +48,10 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->pushFgColor, SIGNAL(clicked()), SLOT(selectFgColor()));
     connect(ui->pushBgColor, SIGNAL(clicked()), SLOT(selectBgColor()));
     connect(ui->pushSaveFile, SIGNAL(clicked()), SLOT(selectOutFile()));
+
+    connect(ui->labelPreview, SIGNAL(charInfoSelected(int)), SLOT(charInfoChanged(int)));
+    connect(ui->pushNextChar, SIGNAL(clicked()), SLOT(nextCharInfo()));
+    connect(ui->pushPrevChar, SIGNAL(clicked()), SLOT(prevCharInfo()));
 }
 
 MainWindow::~MainWindow()
@@ -501,4 +505,26 @@ void MainWindow::selectOutFile()
 void MainWindow::on_checkAntiAlaise_toggled(bool checked)
 {
     m_antiAliase = checked;
+}
+
+void MainWindow::charInfoChanged(int index)
+{
+    m_currentCharInfo = index;
+    m_charWidget->setCharInfo(m_fullList.at(index));
+}
+
+void MainWindow::nextCharInfo()
+{
+    if(m_currentCharInfo+1 < m_fullList.count()) {
+        m_currentCharInfo++;
+        m_charWidget->setCharInfo(m_fullList.at(m_currentCharInfo));
+    }
+}
+
+void MainWindow::prevCharInfo()
+{
+    if(m_currentCharInfo-1 >= 0) {
+        m_currentCharInfo--;
+        m_charWidget->setCharInfo(m_fullList.at(m_currentCharInfo));
+    }
 }

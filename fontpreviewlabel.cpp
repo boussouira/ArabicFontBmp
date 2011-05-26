@@ -44,7 +44,7 @@ void FontPreviewLabel::mousePressEvent(QMouseEvent *ev)
                 }
             }
 
-            m_charWidget->setCharInfo(charInfo);
+            emit charInfoSelected(i);
         }
     }
 }
@@ -52,11 +52,6 @@ void FontPreviewLabel::mousePressEvent(QMouseEvent *ev)
 void FontPreviewLabel::setRectList(QList<CharInfo*> list)
 {
     m_charList = list;
-}
-
-void FontPreviewLabel::setCharInfoWidget(CharInfoWidget *w)
-{
-    m_charWidget = w;
 }
 
 QList<CharInfo*> FontPreviewLabel::getRectList()

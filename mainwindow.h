@@ -37,7 +37,9 @@ private slots:
     QImage cleanImage();
     void generateCode();
     void selectOutFile();
-
+    void charInfoChanged(int index);
+    void nextCharInfo();
+    void prevCharInfo();
 
     void on_checkAntiAlaise_toggled(bool checked);
 
@@ -54,6 +56,7 @@ private:
     QList<CharInfo*> m_cleanList;
     bool m_fontChanged;
     bool m_antiAliase;
+    int m_currentCharInfo;
     Ui::MainWindow *ui;
 };
 

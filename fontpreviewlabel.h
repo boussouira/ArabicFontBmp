@@ -12,15 +12,16 @@ public:
     FontPreviewLabel(QWidget *parent = 0);
     ~FontPreviewLabel();
     void setRectList(QList<CharInfo*> list);
-    void setCharInfoWidget(CharInfoWidget *w);
 
 protected:
     QList<CharInfo *> getRectList();
     void mousePressEvent(QMouseEvent *ev);
 
+signals:
+    void charInfoSelected(int index);
+
 protected:
-    CharInfoWidget *m_charWidget;
-     QList<CharInfo*> m_charList;
+    QList<CharInfo*> m_charList;
 };
 
 #endif // FONTPREVIEWLABEL_H
