@@ -16,7 +16,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 
     m_fgColor = QColor(Qt::black);
-    m_bgColor = QColor(Qt::white);
+    m_bgColor = QColor(Qt::white); //227,227,227
 
     m_twoCases << 0x621 << 0x622 << 0x623 << 0x624 << 0x625
                << 0x627 << 0x629 << 0x62f << 0x630 << 0x631
@@ -32,14 +32,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->labelPreview->setCharInfoWidget(m_charWidget);
 
     generateText();
-    ui->checkBox->setChecked(true);
 
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QSettings s;
     ui->lineOutputFile->setText(s.value("lastSaveFile").toString());
     m_font.fromString(s.value("font").toString());
     m_fontChanged = true;
-
+    m_antiAliase = true;
     connect(ui->pushChangeFont, SIGNAL(clicked()), SLOT(changeFont()));
     connect(ui->pushGenerateImage, SIGNAL(clicked()), SLOT(generateImage()));
     connect(ui->pushCleanImage, SIGNAL(clicked()), SLOT(cleanImage()));
@@ -90,34 +89,36 @@ void MainWindow::generateImage()
     int textW = ui->spinImageW->value();
     int symbolTextWidth = fontInfo.width(ui->lineSymbols->text());
 
-    QPixmap temp = QPixmap(symbolTextWidth, textH);
+    QImage temp = QImage(symbolTextWidth, textH, QImage::Format_ARGB32);
     QPainter pTemp(&temp);
-    pTemp.setRenderHint(QPainter::Antialiasing);
-    pTemp.setRenderHint(QPainter::TextAntialiasing);
-    pTemp.setRenderHint(QPainter::HighQualityAntialiasing);
-    pTemp.setRenderHint(QPainter::SmoothPixmapTransform);
-
+    if(m_antiAliase) {
+        pTemp.setRenderHint(QPainter::Antialiasing);
+        pTemp.setRenderHint(QPainter::TextAntialiasing);
+        pTemp.setRenderHint(QPainter::HighQualityAntialiasing);
+        pTemp.setRenderHint(QPainter::SmoothPixmapTransform);
+    }
     pTemp.fillRect(0,0, temp.width(), temp.height(), QBrush(m_bgColor));
     pTemp.setPen(m_fgColor);
     pTemp.setFont(m_font);
     pTemp.drawText(ui->spinDrawX->value(), ui->spinDrawY->value(), symbolText);
 
 
-    m_pixMap = QPixmap(textW, textH);
+    m_pixMap = QImage(textW, textH, QImage::Format_ARGB32);
 
     QPainter p(&m_pixMap);
-    p.setRenderHint(QPainter::Antialiasing);
-    p.setRenderHint(QPainter::TextAntialiasing);
-    p.setRenderHint(QPainter::HighQualityAntialiasing);
-    p.setRenderHint(QPainter::SmoothPixmapTransform);
-
+    if(m_antiAliase) {
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setRenderHint(QPainter::TextAntialiasing);
+        p.setRenderHint(QPainter::HighQualityAntialiasing);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+    }
     p.fillRect(0,0, m_pixMap.width(), m_pixMap.height(), QBrush(m_bgColor));
     p.setPen(m_fgColor);
     p.setFont(m_font);
-    p.drawPixmap(0, 0, temp);
+    p.drawImage(0, 0, temp);
     p.drawText(ui->spinDrawX->value()+symbolTextWidth, ui->spinDrawY->value(), arText);
 
-    ui->labelPreview->setPixmap(m_pixMap);
+    ui->labelPreview->setPixmap(QPixmap::fromImage(m_pixMap));
     if(m_fontChanged) {
         generateInfoList();
         m_fontChanged = false;
@@ -126,14 +127,15 @@ void MainWindow::generateImage()
 
 void MainWindow::viewCharMap()
 {
-    QPixmap img(ui->spinImageW->value(), ui->spinImageH->value());
+    QImage img(ui->spinImageW->value(), ui->spinImageH->value(), QImage::Format_ARGB32);
     QRect distRect;
     QPainter p(&img);
-    p.setRenderHint(QPainter::Antialiasing);
-    p.setRenderHint(QPainter::TextAntialiasing);
-    p.setRenderHint(QPainter::HighQualityAntialiasing);
-    p.setRenderHint(QPainter::SmoothPixmapTransform);
-
+    if(m_antiAliase) {
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setRenderHint(QPainter::TextAntialiasing);
+        p.setRenderHint(QPainter::HighQualityAntialiasing);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+    }
     p.setPen(Qt::red);
 
 //    p.drawImage(0, 0, m_pixMap.toImage());
@@ -151,13 +153,13 @@ void MainWindow::viewCharMap()
         else
             p.setBrush(Qt::NoBrush);
 
-        p.drawImage(distRect, m_pixMap.toImage(), ci->rect);
+        p.drawImage(distRect, m_pixMap, ci->rect);
         p.drawRect(distRect);
 
         dis_x += ci->rect.width();
     }
 
-    ui->labelPreview->setPixmap(img);
+    ui->labelPreview->setPixmap(QPixmap::fromImage(img));
 }
 
 void MainWindow::generateInfoList()
@@ -179,6 +181,29 @@ void MainWindow::generateInfoList()
 
         info->rect = rect;
         info->ch = symbolText.at(i);
+
+        uchar ch =  symbolText.at(i).unicode();
+
+        if(ch == 0xab)
+            info->ch = QChar(0xbb);
+        else if(ch == 0xbb)
+            info->ch = QChar(0xab);
+        else if(ch == '{')
+            info->ch = QChar('}');
+        else if(ch == '}')
+            info->ch = QChar('{');
+        else if(ch == ']')
+            info->ch = QChar('[');
+        else if(ch == '[')
+            info->ch = QChar(']');
+        else if(ch == '(')
+            info->ch = QChar(')');
+        else if(ch == ')')
+            info->ch = QChar('(');
+        else if(ch == '<')
+            info->ch = QChar('>');
+        else if(ch == '>')
+            info->ch = QChar('<');
 
         m_fullList << info;
     }
@@ -301,7 +326,7 @@ void MainWindow::on_lineArabic_editingFinished()
 
 void MainWindow::saveImage()
 {
-    ui->labelPreview->pixmap()->save(ui->lineOutputFile->text() ,"PNG");
+    cleanImage().save(ui->lineOutputFile->text(), "PNG");
 }
 
 void MainWindow::generateText()
@@ -322,10 +347,10 @@ void MainWindow::generateText()
     }
 
     arText.append(trUtf8("لا ـلا لأ ـلأ لآ ـلآ لإ ـلإ"));
-    arText.append(trUtf8("،,’؟"));
+    arText.append(trUtf8("،,’؛؟"));
     arText.append(trUtf8("ـ"));
 
-    symbolsText.append(trUtf8(" !\"#$%&'()*+,-./0123456789:;<=>?@"
+    symbolsText.append(trUtf8(" !\"#$%/&'()*+,-.0123456789:;<=>?@"
 //                              "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                               "[\\]^_`"
 //                              "abcdefghijklmnopqrstuvwxyz"
@@ -346,24 +371,25 @@ void MainWindow::selectBgColor()
     m_bgColor = QColorDialog::getColor(m_bgColor, this);
 }
 
-void MainWindow::cleanImage()
+QImage MainWindow::cleanImage()
 {
     int textH = ui->spinImageH->value();
     int textW = ui->spinImageW->value();
 
     QImage cleanImage(textW, textH, QImage::Format_RGB32);
     QPainter p(&cleanImage);
-    QImage SourceImage = m_pixMap.toImage();
+    QImage SourceImage = m_pixMap;
 
     QRect distRect;
     distRect.setHeight(textH);
     distRect.setY(0);
 
-    p.setRenderHint(QPainter::Antialiasing);
-    p.setRenderHint(QPainter::TextAntialiasing);
-    p.setRenderHint(QPainter::HighQualityAntialiasing);
-    p.setRenderHint(QPainter::SmoothPixmapTransform);
-
+    if(m_antiAliase) {
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setRenderHint(QPainter::TextAntialiasing);
+        p.setRenderHint(QPainter::HighQualityAntialiasing);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+    }
     p.fillRect(0,0, cleanImage.width(), cleanImage.height(), QBrush(m_bgColor));
     p.setPen(m_fgColor);
     p.setFont(m_font);
@@ -383,16 +409,18 @@ void MainWindow::cleanImage()
         dis_x += ci->rect.width();
     }
 
-    QPixmap cleanPix(dis_x, cleanImage.height());
+    QImage cleanPix(dis_x, cleanImage.height(), QImage::Format_ARGB32);
     QPainter px(&cleanPix);
-    px.setRenderHint(QPainter::Antialiasing);
-    px.setRenderHint(QPainter::TextAntialiasing);
-    px.setRenderHint(QPainter::HighQualityAntialiasing);
-    px.setRenderHint(QPainter::SmoothPixmapTransform);
-
+    if(m_antiAliase) {
+        px.setRenderHint(QPainter::Antialiasing);
+        px.setRenderHint(QPainter::TextAntialiasing);
+        px.setRenderHint(QPainter::HighQualityAntialiasing);
+        px.setRenderHint(QPainter::SmoothPixmapTransform);
+    }
     px.drawImage(0, 0, cleanImage, 0, 0, dis_x, cleanImage.height());
 
-    ui->labelPreview->setPixmap(cleanPix);
+    ui->labelPreview->setPixmap(QPixmap::fromImage(cleanPix));
+    return cleanPix;
 }
 
 void MainWindow::generateCode()
@@ -468,4 +496,9 @@ void MainWindow::selectOutFile()
     if(!fileName.isEmpty()) {
         ui->lineOutputFile->setText(fileName);
     }
+}
+
+void MainWindow::on_checkAntiAlaise_toggled(bool checked)
+{
+    m_antiAliase = checked;
 }

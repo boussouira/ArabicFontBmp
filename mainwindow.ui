@@ -204,9 +204,12 @@
         </layout>
        </item>
        <item>
-        <widget class="QCheckBox" name="checkBox">
+        <widget class="QCheckBox" name="checkAntiAlaise">
          <property name="text">
-          <string>RTL</string>
+          <string>Anti Alaise text</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>

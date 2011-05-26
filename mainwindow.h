@@ -34,14 +34,16 @@ private slots:
     void generateText();
     void selectFgColor();
     void selectBgColor();
-    void cleanImage();
+    QImage cleanImage();
     void generateCode();
     void selectOutFile();
 
 
+    void on_checkAntiAlaise_toggled(bool checked);
+
 private:
     QFont m_font;
-    QPixmap m_pixMap;
+    QImage m_pixMap;
     QColor m_fgColor;
     QColor m_bgColor;
     CharInfoWidget *m_charWidget;
@@ -51,6 +53,7 @@ private:
     QList<CharInfo*> m_fullList;
     QList<CharInfo*> m_cleanList;
     bool m_fontChanged;
+    bool m_antiAliase;
     Ui::MainWindow *ui;
 };
 

@@ -236,7 +236,6 @@ void JGenerator::addTwoCases(ushort ch, CharInfo *endInfo, CharInfo *singleInfo)
 
 void JGenerator::addFourCases(ushort ch, CharInfo *startInfo, CharInfo *middleInfo, CharInfo *endInfo, CharInfo *singleInfo)
 {
-
     if(ch == 0x644) {
         _charWidth.append(QString("case 0x%1:""\n"
                                   "if(nextChar == 0x627 || nextChar == 0x622 || nextChar == 0x623 || nextChar == 0x625){\n"
@@ -259,59 +258,93 @@ void JGenerator::addFourCases(ushort ch, CharInfo *startInfo, CharInfo *middleIn
                           .arg(endInfo->width())
                           .arg(singleInfo->width()));
         _charX.append(QString("case 0x%1:""\n"
-                                  "if(nextChar == 0x627 || nextChar == 0x622 || nextChar == 0x623 || nextChar == 0x625){\n"
-                                  "charX = getComposedCharX(ch, nextChar, prevChar);"
-                                  "} else {\n"
+                              "if(nextChar == 0x627 || nextChar == 0x622 || nextChar == 0x623 || nextChar == 0x625){\n"
+                              "charX = getComposedCharX(ch, nextChar, prevChar);"
+                              "} else {\n"
+                              "if((!isArabicChar(prevChar) && !(getCharCases(prevChar) == 2)) || (isArabicChar(nextChar) &&  getCharCases(prevChar) == 2)) {""\n"
+                              "charX = %2;""\n"
+                              "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
+                              "charX = %3;""\n"
+                              "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
+                              "charX = %4;""\n"
+                              "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 2) {""\n"
+                              "charX = %5;""\n"
+                              "}""\n"
+                              "}\n"
+                              "break;""\n")
+                      .arg(ch, 0, 16)
+                      .arg(startInfo->x())
+                      .arg(middleInfo->x())
+                      .arg(endInfo->x())
+                      .arg(singleInfo->x()));
+    } else if(ch == 0x64a) {
+        _charWidth.append(QString("case 0x%1:""\n"
                                   "if((!isArabicChar(prevChar) && !(getCharCases(prevChar) == 2)) || (isArabicChar(nextChar) &&  getCharCases(prevChar) == 2)) {""\n"
-                                  "charX = %2;""\n"
-                                  "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
-                                  "charX = %3;""\n"
-                                  "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
-                                  "charX = %4;""\n"
+                                  "charWidth = %2;""\n"
+                                  "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4 && nextChar != 0x621) {""\n"
+                                  "charWidth = %3;""\n"
+                                  "} else if((!isArabicChar(nextChar) && getCharCases(prevChar) == 4) || nextChar == 0x621) {""\n"
+                                  "charWidth = %4;""\n"
                                   "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 2) {""\n"
-                                  "charX = %5;""\n"
+                                  "charWidth = %5;""\n"
                                   "}""\n"
-                                  "}\n"
                                   "break;""\n")
                           .arg(ch, 0, 16)
-                          .arg(startInfo->x())
-                          .arg(middleInfo->x())
-                          .arg(endInfo->x())
-                          .arg(singleInfo->x()));
-    } else {
-    _charWidth.append(QString("case 0x%1:""\n"
+                          .arg(startInfo->width())
+                          .arg(middleInfo->width())
+                          .arg(endInfo->width())
+                          .arg(singleInfo->width()));
+
+        _charX.append(QString("case 0x%1:""\n"
                               "if((!isArabicChar(prevChar) && !(getCharCases(prevChar) == 2)) || (isArabicChar(nextChar) &&  getCharCases(prevChar) == 2)) {""\n"
-                              "charWidth = %2;""\n"
-                              "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
-                              "charWidth = %3;""\n"
-                              "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
-                              "charWidth = %4;""\n"
+                              "charX = %2;""\n"
+                              "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4 && nextChar != 0x621) {""\n"
+                              "charX = %3;""\n"
+                              "} else if((!isArabicChar(nextChar) && getCharCases(prevChar) == 4) || nextChar == 0x621) {""\n"
+                              "charX = %4;""\n"
                               "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 2) {""\n"
-                              "charWidth = %5;""\n"
+                              "charX = %5;""\n"
                               "}""\n"
                               "break;""\n")
                       .arg(ch, 0, 16)
-                      .arg(startInfo->width())
-                      .arg(middleInfo->width())
-                      .arg(endInfo->width())
-                      .arg(singleInfo->width()));
+                      .arg(startInfo->x())
+                      .arg(middleInfo->x())
+                      .arg(endInfo->x())
+                      .arg(singleInfo->x()));
+    } else {
+        _charWidth.append(QString("case 0x%1:""\n"
+                                  "if((!isArabicChar(prevChar) && !(getCharCases(prevChar) == 2)) || (isArabicChar(nextChar) &&  getCharCases(prevChar) == 2)) {""\n"
+                                  "charWidth = %2;""\n"
+                                  "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
+                                  "charWidth = %3;""\n"
+                                  "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
+                                  "charWidth = %4;""\n"
+                                  "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 2) {""\n"
+                                  "charWidth = %5;""\n"
+                                  "}""\n"
+                                  "break;""\n")
+                          .arg(ch, 0, 16)
+                          .arg(startInfo->width())
+                          .arg(middleInfo->width())
+                          .arg(endInfo->width())
+                          .arg(singleInfo->width()));
 
-    _charX.append(QString("case 0x%1:""\n"
-                          "if((!isArabicChar(prevChar) && !(getCharCases(prevChar) == 2)) || (isArabicChar(nextChar) &&  getCharCases(prevChar) == 2)) {""\n"
-                          "charX = %2;""\n"
-                          "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
-                          "charX = %3;""\n"
-                          "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
-                          "charX = %4;""\n"
-                          "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 2) {""\n"
-                          "charX = %5;""\n"
-                          "}""\n"
-                          "break;""\n")
-                  .arg(ch, 0, 16)
-                  .arg(startInfo->x())
-                  .arg(middleInfo->x())
-                  .arg(endInfo->x())
-                  .arg(singleInfo->x()));
+        _charX.append(QString("case 0x%1:""\n"
+                              "if((!isArabicChar(prevChar) && !(getCharCases(prevChar) == 2)) || (isArabicChar(nextChar) &&  getCharCases(prevChar) == 2)) {""\n"
+                              "charX = %2;""\n"
+                              "} else if(isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
+                              "charX = %3;""\n"
+                              "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 4) {""\n"
+                              "charX = %4;""\n"
+                              "} else if(!isArabicChar(nextChar) &&  getCharCases(prevChar) == 2) {""\n"
+                              "charX = %5;""\n"
+                              "}""\n"
+                              "break;""\n")
+                      .arg(ch, 0, 16)
+                      .arg(startInfo->x())
+                      .arg(middleInfo->x())
+                      .arg(endInfo->x())
+                      .arg(singleInfo->x()));
     }
 }
 
