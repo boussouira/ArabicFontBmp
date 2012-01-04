@@ -80,7 +80,7 @@ void MainWindow::generateOptions()
     ui->spinImageW->setValue(textW);
 
     ui->spinDrawX->setValue(0);
-    ui->spinDrawY->setValue(fontInfo.lineSpacing()-fontInfo.descent());
+    ui->spinDrawY->setValue(fontInfo.lineSpacing()-fontInfo.descent()-4);
 }
 
 void MainWindow::generateImage()
@@ -434,6 +434,7 @@ void MainWindow::generateCode()
     QTextEdit *edit = new QTextEdit(0);
 
     JGenerator generator;
+    generator.setCharHeight(ui->spinImageH->value());
     qDebug() << "Start with" << m_cleanList.count() << "Chars";
     foreach(CharInfo *info, m_cleanList) {
         ushort ch = info->ch.unicode();
